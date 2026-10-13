@@ -16,7 +16,7 @@
     dest: "/usr/local/bin/node_exporter"
     remote_src: yes
     mode: '0755'
-    become: yes
+  become: yes
 
 - name: Create node Exporter systemd service file
   copy:
@@ -32,9 +32,9 @@
 
       [Install]
       WantedBy=multi-user.target
-    become: yes
-    notify:
-      - Restart node_exporter
+  become: yes
+  notify:
+    - Restart node_exporter
 
 - name: Start and enable node Exporter service
   systemd:
@@ -42,5 +42,5 @@
     state: started
     enabled: yes
     daemon_reload: yes
-    become: yes
+  become: yes
 

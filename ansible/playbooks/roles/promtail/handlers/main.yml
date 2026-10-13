@@ -4,4 +4,4 @@
     name: promtail
     state: restarted
     daemon_reload: yes
-    become: yes
+  become: yes

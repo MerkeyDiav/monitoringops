@@ -8,7 +8,7 @@
   apt:
     name: unzip
     state: present
-    become: yes
+  become: yes
 
 - name: "Unzip promtail binary"
   unarchive:
@@ -16,14 +16,14 @@
     dest: "/usr/local/bin/"
     remote_src: yes
     mode: '0755'
-    become: yes
+  become: yes
 
 - name: "Create promtail config directory"
   file:
     path: "/etc/promtail"
     state: directory
-    become: yes
     mode: '0755'
+  become: yes
   
 - name: "Deploy promtail config"
   template:
@@ -32,9 +32,9 @@
     mode: '0644'
     owner: root
     group: root
-    become: yes
-    notify:
-      - Restart promtail
+  become: yes
+  notify:
+    - Restart promtail
   
 - name: "Create promtail systemd service file"
   copy:
@@ -51,9 +51,9 @@
       [Install]
       WantedBy=multi-user.target
     mode: '0644'
-    become: yes
-    notify:
-      - Restart promtail
+  become: yes
+  notify:
+    - Restart promtail
 
 
 - name: "enable and start promtail service"
@@ -62,4 +62,4 @@
     enabled: yes
     state: started
     daemon_reload: yes
-    become: yes
+  become: yes
