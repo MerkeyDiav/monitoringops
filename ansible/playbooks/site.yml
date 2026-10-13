@@ -1,0 +1,6 @@
+---
+- hosts: docker_nodes
+  become: true
+  roles:
+    - node_exporter
+    - promtail

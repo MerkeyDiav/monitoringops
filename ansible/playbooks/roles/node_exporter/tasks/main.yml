@@ -1,0 +1,46 @@
+---
+- name : Install node Exporter archive 
+  get_url:
+    url: "https://github.com/prometheus/node_exporter/releases/download/v1.8.2/node_exporter-1.8.2.linux-amd64.tar.gz"
+    dest: "/tmp/node_exporter-1.8.2.linux-amd64.tar.gz"
+
+- name: Extract node Exporter archive
+  unarchive:
+    src: "/tmp/node_exporter-1.8.2.linux-amd64.tar.gz"
+    dest: "/opt/"
+    remote_src: yes
+
+- name: Move node Exporter binary to /usr/local/bin
+  copy:
+    src: "/opt/node_exporter-1.8.2.linux-amd64/node_exporter"
+    dest: "/usr/local/bin/node_exporter"
+    remote_src: yes
+    mode: '0755'
+    become: yes
+
+- name: Create node Exporter systemd service file
+  copy:
+    dest: /etc/systemd/system/node_exporter.service
+    content: |
+      [Unit]
+      Description=Node Exporter
+      After=network.target
+
+      [Service]
+      User=ubuntu
+      ExecStart=/usr/local/bin/node_exporter
+
+      [Install]
+      WantedBy=default.target
+    become: yes
+    notify:
+      - Reload Node Exporter service
+
+- name: Start and enable node Exporter service
+  systemd:
+    name: node_exporter
+    state: started
+    enabled: yes
+    daemon_reload: yes
+    become: yes
+

@@ -1,0 +1,65 @@
+---
+- name : "Download promtail binary"
+  get_url:
+    url: "https://github.com/grafana/loki/releases/download/v2.9.5/promtail-linux-amd64.zip"
+    dest: "/tmp/promtail.zip"
+
+- name: "install unzip if not present"
+  apt:
+    name: unzip
+    state: present
+    become: yes
+
+- name: "Unzip promtail binary"
+  unarchive:
+    src: "/tmp/promtail.zip"
+    dest: "/usr/local/bin/"
+    remote_src: yes
+    mode: '0755'
+    become: yes
+
+- name: "Create promtail config directory"
+  file:
+    path: "/etc/promtail"
+    state: directory
+    become: yes
+    mode: '0755'
+  
+- name: "Deploy promtail config"
+  template:
+    src: "promtail-config.yaml.j2"
+    dest: "/etc/promtail/promtail-config.yaml"
+    mode: '0644'
+    owner: root
+    group: root
+    become: yes
+    notify:
+      - restart promtail
+  
+- name: "Create promtail systemd service file"
+  copy:
+    dest: "/etc/systemd/system/promtail.service"
+    content: |
+      [Unit]
+      Description=Promtail service
+      After=network.target
+
+      [Service]
+      ExecStart=/usr/local/bin/promtail-linux-amd64 -config.file=/etc/promtail/promtail-config.yaml
+      Restart=always
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+    become: yes
+    notify:
+      - restart promtail
+
+
+- name: "enable and start promtail service"
+  systemd:
+    name: promtail
+    enabled: yes
+    state: started
+    daemon_reload: yes
+    become: yes
