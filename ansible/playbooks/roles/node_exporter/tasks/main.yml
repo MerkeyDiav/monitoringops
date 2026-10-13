@@ -31,10 +31,10 @@
       ExecStart=/usr/local/bin/node_exporter
 
       [Install]
-      WantedBy=default.target
+      WantedBy=multi-user.target
     become: yes
     notify:
-      - Reload Node Exporter service
+      - Restart node_exporter
 
 - name: Start and enable node Exporter service
   systemd:

@@ -1,0 +1,9 @@
+# Normalise TOUTES les fins de ligne en LF.
+# Indispensable car le repo est édité sous Windows (WSL) et exécuté sur Linux/WSL.
+* text=auto eol=lf
+
+# Fichiers binaires / clés : aucune conversion
+*.pem -text
+*.key -text
+*.png -text
+*.jpg -text

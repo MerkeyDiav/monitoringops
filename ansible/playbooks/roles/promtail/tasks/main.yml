@@ -34,7 +34,7 @@
     group: root
     become: yes
     notify:
-      - restart promtail
+      - Restart promtail
   
 - name: "Create promtail systemd service file"
   copy:
@@ -53,7 +53,7 @@
     mode: '0644'
     become: yes
     notify:
-      - restart promtail
+      - Restart promtail
 
 
 - name: "enable and start promtail service"

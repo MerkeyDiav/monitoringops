@@ -1,0 +1,10 @@
+# ===== Secrets / clés SSH (ne JAMAIS commiter) =====
+*.pem
+*.key
+
+# ===== Fichiers temporaires Ansible =====
+*.retry
+
+# ===== Python =====
+__pycache__/
+*.pyc
