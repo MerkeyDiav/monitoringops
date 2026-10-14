@@ -1,0 +1,26 @@
+# Fichier de configuration Prometheus généré par Ansible (rôle prometheus).
+# Ne pas éditer directement sur le serveur : modifier le template à la place.
+
+global:
+  scrape_interval: {{ prometheus_scrape_interval }}
+  evaluation_interval: {{ prometheus_evaluation_interval }}
+  external_labels:
+    monitor: monitoringops
+
+# Fichiers de règles d'alerte (optionnel)
+rule_files:
+  - "{{ prometheus_config_dir }}/rules/*.yml"
+
+scrape_configs:
+  # Prometheus se scrape lui-même (health check de l'instance)
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:{{ prometheus_port }}"]
+
+  # Node Exporter déployé sur les nœuds docker_nodes
+  - job_name: "node_exporter"
+    static_configs:
+      - targets:
+{%- for target in node_exporter_targets %}
+          - "{{ target }}"
+{%- endfor %}

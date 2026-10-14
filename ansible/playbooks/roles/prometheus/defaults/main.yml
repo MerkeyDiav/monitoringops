@@ -1,0 +1,16 @@
+---
+# Define version and default port that ansible will use for prometheus
+
+prometheus_version: "2.46.0"
+prometheus_port: 9090
+prometheus_config_dir: "/etc/prometheus"
+prometheus_data_dir: "/var/lib/prometheus"
+
+# Intervalles de collecte et d'évaluation des règles d'alerte
+prometheus_scrape_interval: "15s"
+prometheus_evaluation_interval: "15s"
+
+# Cibles node_exporter à scrapper (format IP:port).
+# À surcharger via group_vars/host_vars ou -e selon l'inventaire réel.
+node_exporter_targets:
+  - "18.217.30.53:9100"

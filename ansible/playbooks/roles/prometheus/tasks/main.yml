@@ -1,0 +1,121 @@
+---
+- name: Create Prometheus system group
+  ansible.builtin.group:
+    name: prometheus
+    system: yes
+    state: present
+  become: true
+
+- name: Create Prometheus system user
+  ansible.builtin.user:
+    name: prometheus
+    system: yes
+    shell: /sbin/nologin
+    group: prometheus
+    create_home: no
+    state: present
+  become: true
+
+- name: Create Prometheus directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: prometheus
+    group: prometheus
+    mode: '0755'
+  loop:
+    - "{{ prometheus_config_dir }}"
+    - "{{ prometheus_config_dir }}/rules"
+    - "{{ prometheus_data_dir }}"
+  become: true
+
+- name: Download Prometheus release
+  ansible.builtin.get_url:
+    url: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheus_version }}/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz"
+    dest: "/tmp/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz"
+    mode: '0644'
+  become: true
+
+- name: Extract Prometheus release
+  ansible.builtin.unarchive:
+    src: "/tmp/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz"
+    dest: "/tmp"
+    remote_src: yes
+    creates: "/tmp/prometheus-{{ prometheus_version }}.linux-amd64/prometheus"
+  become: true
+
+- name: Copy Prometheus binaries to /usr/local/bin
+  ansible.builtin.copy:
+    src: "/tmp/prometheus-{{ prometheus_version }}.linux-amd64/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    remote_src: yes
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - prometheus
+    - promtool
+  become: true
+  notify:
+    - Restart prometheus
+
+- name: Copy Prometheus consoles
+  ansible.builtin.copy:
+    src: "/tmp/prometheus-{{ prometheus_version }}.linux-amd64/{{ item }}"
+    dest: "{{ prometheus_config_dir }}/{{ item }}"
+    remote_src: yes
+    owner: prometheus
+    group: prometheus
+    mode: '0755'
+  loop:
+    - consoles
+    - console_libraries
+  become: true
+
+- name: Deploy Prometheus configuration
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: "{{ prometheus_config_dir }}/prometheus.yml"
+    owner: prometheus
+    group: prometheus
+    mode: '0644'
+    validate: "/usr/local/bin/promtool check config %s"
+  become: true
+  notify:
+    - Restart prometheus
+
+- name: Create Prometheus systemd service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/prometheus.service
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Prometheus
+      Wants=network-online.target
+      After=network-online.target
+
+      [Service]
+      User=prometheus
+      Group=prometheus
+      Type=simple
+      ExecStart=/usr/local/bin/prometheus \
+        --config.file={{ prometheus_config_dir }}/prometheus.yml \
+        --storage.tsdb.path={{ prometheus_data_dir }} \
+        --web.console.templates={{ prometheus_config_dir }}/consoles \
+        --web.console.libraries={{ prometheus_config_dir }}/console_libraries \
+        --web.listen-address=0.0.0.0:{{ prometheus_port }}
+      Restart=on-failure
+
+      [Install]
+      WantedBy=multi-user.target
+  become: true
+  notify:
+    - Restart prometheus
+
+- name: Start and enable Prometheus service
+  ansible.builtin.systemd:
+    name: prometheus
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  become: true

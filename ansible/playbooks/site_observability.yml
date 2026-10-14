@@ -1,0 +1,5 @@
+---
+- hosts: observability_collectors
+  become: yes
+  roles:
+    - prometheus
