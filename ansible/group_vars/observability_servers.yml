@@ -1,0 +1,8 @@
+---
+# Variables appliquées à toutes les machines du groupe [observability_servers].
+# Utilisées si le rôle node_exporter est aussi déployé sur ces serveurs
+# (pour superviser Prometheus/Grafana eux-mêmes).
+
+node_exporter_version: "1.8.2"
+node_exporter_port: 9100
+node_exporter_extra_args: []

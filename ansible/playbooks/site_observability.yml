@@ -1,5 +1,8 @@
 ---
-- hosts: observability_collectors
-  become: yes
+
+- name: Install Prometheus
+  hosts: obs_collector
+  become: true
   roles:
     - prometheus
+    

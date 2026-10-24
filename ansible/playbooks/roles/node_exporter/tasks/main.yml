@@ -1,46 +1,84 @@
 ---
-- name : Install node Exporter archive 
-  get_url:
-    url: "https://github.com/prometheus/node_exporter/releases/download/v1.8.2/node_exporter-1.8.2.linux-amd64.tar.gz"
-    dest: "/tmp/node_exporter-1.8.2.linux-amd64.tar.gz"
+# Rôle node_exporter : installation idempotente et multi-distributions.
+# Toutes les valeurs (version, port, utilisateur, arch...) sont dans defaults/main.yml.
+# Relancer le playbook sur une machine déjà à jour => 0 changement, 0 redémarrage.
 
-- name: Extract node Exporter archive
-  unarchive:
-    src: "/tmp/node_exporter-1.8.2.linux-amd64.tar.gz"
-    dest: "/opt/"
-    remote_src: yes
+- name: Create node_exporter system group
+  become: true
+  ansible.builtin.group:
+    name: "{{ node_exporter_group }}"
+    system: true
+    state: present
 
-- name: Move node Exporter binary to /usr/local/bin
-  copy:
-    src: "/opt/node_exporter-1.8.2.linux-amd64/node_exporter"
-    dest: "/usr/local/bin/node_exporter"
-    remote_src: yes
-    mode: '0755'
-  become: yes
+- name: Create node_exporter system user (no login, no home)
+  become: true
+  ansible.builtin.user:
+    name: "{{ node_exporter_user }}"
+    group: "{{ node_exporter_group }}"
+    system: true
+    shell: /usr/sbin/nologin
+    create_home: false
+    state: present
 
-- name: Create node Exporter systemd service file
-  copy:
+- name: Download Node Exporter archive (checksum verified)
+  ansible.builtin.get_url:
+    url: "{{ node_exporter_archive_url }}"
+    dest: "{{ node_exporter_archive_path }}"
+    checksum: "sha256:{{ node_exporter_checksum_url }}"
+    mode: "0644"
+
+# creates : si le binaire de CETTE version existe déjà, l'extraction est sautée.
+# Comme le chemin contient la version, changer node_exporter_version
+# déclenche bien une nouvelle extraction (mise à niveau).
+- name: Extract Node Exporter archive
+  become: true
+  ansible.builtin.unarchive:
+    src: "{{ node_exporter_archive_path }}"
+    dest: "{{ node_exporter_install_dir }}/"
+    remote_src: true
+    creates: "{{ node_exporter_install_dir }}/{{ node_exporter_release_name }}/node_exporter"
+
+# copy compare le contenu : rien n'est recopié si le binaire est identique.
+- name: Install Node Exporter binary
+  become: true
+  ansible.builtin.copy:
+    src: "{{ node_exporter_install_dir }}/{{ node_exporter_release_name }}/node_exporter"
+    dest: "{{ node_exporter_binary_path }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0755"
+  notify: Restart node_exporter
+
+- name: Deploy Node Exporter systemd service file
+  become: true
+  ansible.builtin.template:
+    src: node_exporter.service.j2
     dest: /etc/systemd/system/node_exporter.service
-    content: |
-      [Unit]
-      Description=Node Exporter
-      After=network.target
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart node_exporter
 
-      [Service]
-      User=ubuntu
-      ExecStart=/usr/local/bin/node_exporter
-
-      [Install]
-      WantedBy=multi-user.target
-  become: yes
-  notify:
-    - Restart node_exporter
-
-- name: Start and enable node Exporter service
-  systemd:
+- name: Enable and start Node Exporter service
+  become: true
+  ansible.builtin.systemd:
     name: node_exporter
     state: started
-    enabled: yes
-    daemon_reload: yes
-  become: yes
+    enabled: true
+    daemon_reload: true
+
+# Exécute les handlers maintenant pour que la vérification teste la bonne version.
+- name: Flush handlers before health check
+  ansible.builtin.meta: flush_handlers
+
+- name: Check that Node Exporter answers on /metrics
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ node_exporter_port }}/metrics"
+    status_code: 200
+    return_content: false
+  register: node_exporter_health
+  retries: 5
+  delay: 3
+  until: node_exporter_health.status == 200
 

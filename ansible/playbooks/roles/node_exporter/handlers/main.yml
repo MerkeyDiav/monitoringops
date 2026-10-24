@@ -1,7 +1,9 @@
 ---
+# Déclenché uniquement si une tâche qui le notifie a signalé "changed"
+# (nouveau binaire ou fichier de service modifié).
 - name: Restart node_exporter
-  systemd:
+  become: true
+  ansible.builtin.systemd:
     name: node_exporter
     state: restarted
-    daemon_reload: yes
-  become: yes
+    daemon_reload: true

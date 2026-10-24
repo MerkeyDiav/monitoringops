@@ -1,0 +1,26 @@
+# Fichier généré par Ansible (rôle node_exporter).
+# Ne pas éditer directement sur le serveur : modifier le template à la place.
+
+[Unit]
+Description=Prometheus Node Exporter
+Documentation=https://github.com/prometheus/node_exporter
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User={{ node_exporter_user }}
+Group={{ node_exporter_group }}
+ExecStart={{ node_exporter_binary_path }} --web.listen-address={{ node_exporter_listen_address }}{% if node_exporter_extra_args | length > 0 %} {{ node_exporter_extra_args | join(' ') }}{% endif %}
+
+Restart=on-failure
+RestartSec=5s
+
+# Durcissement : le service n'a besoin d'aucun droit d'écriture
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
