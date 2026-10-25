@@ -84,6 +84,18 @@
   notify:
     - Restart prometheus
 
+- name: Deploy Prometheus alert rules
+  ansible.builtin.template:
+    src: alert_rules.yml.j2
+    dest: "{{ prometheus_config_dir }}/rules/alert_rules.yml"
+    owner: prometheus
+    group: prometheus
+    mode: '0644'
+    validate: "/usr/local/bin/promtool check rules %s"
+  become: true
+  notify:
+    - Restart prometheus
+
 - name: Create Prometheus systemd service
   ansible.builtin.copy:
     dest: /etc/systemd/system/prometheus.service

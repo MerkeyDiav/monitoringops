@@ -1,0 +1,16 @@
+---
+# Binaire ou fichier systemd modifié => redémarrage complet.
+- name: Restart alertmanager
+  become: true
+  ansible.builtin.systemd:
+    name: alertmanager
+    state: restarted
+    daemon_reload: true
+
+# Seule la configuration a changé => rechargement à chaud (SIGHUP),
+# sans coupure ni perte des alertes en cours.
+- name: Reload alertmanager
+  become: true
+  ansible.builtin.systemd:
+    name: alertmanager
+    state: reloaded

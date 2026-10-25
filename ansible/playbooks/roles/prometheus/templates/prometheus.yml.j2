@@ -7,7 +7,18 @@ global:
   external_labels:
     monitor: monitoringops
 
-# Fichiers de règles d'alerte (optionnel)
+{% if alertmanager_targets | length > 0 %}
+# Envoi des alertes déclenchées vers Alertmanager
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+{% for target in alertmanager_targets %}
+            - "{{ target }}"
+{% endfor %}
+
+{% endif %}
+# Fichiers de règles d'alerte
 rule_files:
   - "{{ prometheus_config_dir }}/rules/*.yml"
 
@@ -17,6 +28,16 @@ scrape_configs:
     static_configs:
       - targets: ["localhost:{{ prometheus_port }}"]
 
+{% if alertmanager_targets | length > 0 %}
+  # Alertmanager (nécessaire pour l'alerte AlertmanagerNotificationsFailing)
+  - job_name: "alertmanager"
+    static_configs:
+      - targets:
+{% for target in alertmanager_targets %}
+          - "{{ target }}"
+{% endfor %}
+
+{% endif %}
   # Node Exporter déployé sur les nœuds docker_nodes
   - job_name: "node_exporter"
     static_configs:

@@ -1,0 +1,55 @@
+---
+# Variables appliquées à toutes les machines du groupe [observability_servers].
+# Utilisées si le rôle node_exporter est aussi déployé sur ces serveurs
+# (pour superviser Prometheus/Grafana eux-mêmes).
+
+node_exporter_version: "1.8.2"
+node_exporter_port: 9100
+node_exporter_extra_args: []
+
+# ---------------------------------------------------------------------------
+# Alertmanager (installé sur obs_collector avec Prometheus)
+# ---------------------------------------------------------------------------
+alertmanager_version: "0.28.1"
+alertmanager_port: 9093
+
+# Prometheus envoie ses alertes à l'Alertmanager local
+alertmanager_targets:
+  - "localhost:{{ alertmanager_port }}"
+
+# ===========================================================================
+# NOTIFICATIONS — DÉSACTIVÉES (phase de test, option A)
+# ===========================================================================
+# Tant que tout ce bloc reste commenté, les valeurs vides de
+# roles/alertmanager/defaults/main.yml s'appliquent :
+#   - les alertes sont reçues, regroupées et routées par Alertmanager ;
+#   - elles sont visibles dans l'UI http://<obs_collector>:9093 et via amtool ;
+#   - AUCUN e-mail / message Teams n'est envoyé.
+#
+# Procédure de test et démarche d'intégration Outlook / Teams :
+#   docs/alertmanager_notifications.md
+#
+# Pour activer un canal : décommenter UNIQUEMENT le bloc concerné, mettre les
+# secrets dans vault.yml (chiffré), puis relancer site_observability.yml.
+# ---------------------------------------------------------------------------
+
+# --- E-mail Outlook / Exchange (selon la méthode validée par l'équipe M365) ---
+# Relais SMTP interne / connecteur M365 (sans authentification) :
+# alertmanager_smtp_smarthost: "smtp-relay.example.com:25"
+# Ou SMTP AUTH sur une boîte de service (si autorisé par l'équipe M365) :
+# alertmanager_smtp_smarthost: "smtp.office365.com:587"
+# alertmanager_smtp_from: "alertmanager@example.com"
+# alertmanager_smtp_auth_username: ""          # vide = pas d'authentification (relais)
+# alertmanager_smtp_auth_password: "{{ vault_alertmanager_smtp_auth_password | default('') }}"
+# alertmanager_smtp_require_tls: true
+# alertmanager_email_to: "prenom.nom@example.com"
+# alertmanager_critical_email_to: "{{ alertmanager_email_to }}"
+
+# --- Microsoft Teams (Workflows / Power Automate, receiver msteamsv2) ---
+# alertmanager_msteams_webhook_url: "{{ vault_alertmanager_msteams_webhook_url | default('') }}"
+# alertmanager_critical_msteams_webhook_url: "{{ vault_alertmanager_msteams_critical_webhook_url | default(alertmanager_msteams_webhook_url) }}"
+
+# --- Slack (non utilisé chez Vodacom, conservé pour d'autres environnements) ---
+# alertmanager_slack_webhook_url: "{{ vault_alertmanager_slack_webhook_url | default('') }}"
+# alertmanager_slack_channel: "#alerts"
+# alertmanager_critical_slack_channel: "#alerts-critical"

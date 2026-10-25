@@ -1,8 +1,10 @@
 ---
 
-- name: Install Prometheus
+# Alertmanager est installé avant Prometheus pour être prêt à recevoir
+# les alertes dès que Prometheus démarre.
+- name: Install Alertmanager and Prometheus
   hosts: obs_collector
   become: true
   roles:
+    - alertmanager
     - prometheus
-    

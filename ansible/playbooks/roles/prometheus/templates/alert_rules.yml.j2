@@ -1,0 +1,70 @@
+# Règles d'alerte générées par Ansible (rôle prometheus).
+# Ne pas éditer directement sur le serveur : modifier le template à la place.
+# Les seuils sont des variables (voir roles/prometheus/defaults/main.yml).
+
+groups:
+  - name: node_exporter
+    rules:
+      - alert: InstanceDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Instance {{ '{{' }} $labels.instance {{ '}}' }} injoignable"
+          description: "La cible {{ '{{' }} $labels.instance {{ '}}' }} (job {{ '{{' }} $labels.job {{ '}}' }}) ne répond plus depuis 2 minutes."
+
+      - alert: HostHighCpuUsage
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > {{ prometheus_alert_cpu_threshold }}
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU élevé sur {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: "Utilisation CPU à {{ '{{' }} $value | printf \"%.1f\" {{ '}}' }}% depuis 10 minutes."
+
+      - alert: HostHighMemoryUsage
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > {{ prometheus_alert_memory_threshold }}
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Mémoire élevée sur {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: "Utilisation mémoire à {{ '{{' }} $value | printf \"%.1f\" {{ '}}' }}% depuis 10 minutes."
+
+      - alert: HostDiskSpaceWarning
+        expr: (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs"}) * 100 > {{ prometheus_alert_disk_warning_threshold }}
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disque {{ '{{' }} $labels.mountpoint {{ '}}' }} presque plein sur {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: "Occupation à {{ '{{' }} $value | printf \"%.1f\" {{ '}}' }}%."
+
+      - alert: HostDiskSpaceCritical
+        expr: (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs"}) * 100 > {{ prometheus_alert_disk_critical_threshold }}
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Disque {{ '{{' }} $labels.mountpoint {{ '}}' }} plein sur {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: "Occupation à {{ '{{' }} $value | printf \"%.1f\" {{ '}}' }}%. Intervention immédiate requise."
+
+  - name: monitoring_stack
+    rules:
+      # Toujours active : permet de vérifier de bout en bout que la chaîne
+      # Prometheus -> Alertmanager fonctionne (visible dans l'UI Alertmanager).
+      - alert: Watchdog
+        expr: vector(1)
+        labels:
+          severity: none
+        annotations:
+          summary: "Alerte de contrôle de la chaîne d'alerting (toujours active)"
+
+      - alert: AlertmanagerNotificationsFailing
+        expr: rate(alertmanager_notifications_failed_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Alertmanager n'arrive pas à envoyer les notifications ({{ '{{' }} $labels.integration {{ '}}' }})"

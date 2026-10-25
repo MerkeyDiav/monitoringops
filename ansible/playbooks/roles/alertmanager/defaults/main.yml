@@ -1,0 +1,94 @@
+---
+# Valeurs par défaut du rôle alertmanager (priorité la plus faible).
+# Surcharger dans group_vars/<groupe>.yml, host_vars/<hôte>.yml ou -e "var=valeur".
+# Les SECRETS (mot de passe SMTP, webhook Slack) ne doivent JAMAIS être écrits
+# ici en clair : les mettre dans un fichier chiffré avec ansible-vault
+# (voir docs/alertmanager.md).
+
+# ---------------------------------------------------------------------------
+# Installation
+# ---------------------------------------------------------------------------
+# Version épinglée. Pour une mise à niveau : changer cette valeur et relancer.
+alertmanager_version: "0.28.1"
+
+alertmanager_user: alertmanager
+alertmanager_group: alertmanager
+
+alertmanager_arch_map:
+  x86_64: amd64
+  aarch64: arm64
+  armv7l: armv7
+alertmanager_arch: "{{ alertmanager_arch_map[ansible_architecture] | default('amd64') }}"
+
+alertmanager_install_dir: /opt
+alertmanager_bin_dir: /usr/local/bin
+alertmanager_config_dir: /etc/alertmanager
+alertmanager_data_dir: /var/lib/alertmanager
+
+# ---------------------------------------------------------------------------
+# Réseau / service
+# ---------------------------------------------------------------------------
+alertmanager_port: 9093
+# Alertmanager n'a pas d'authentification native : en prod, limiter l'accès
+# au port 9093 (Security Group / firewall) à Prometheus et Grafana uniquement.
+alertmanager_listen_address: "0.0.0.0:{{ alertmanager_port }}"
+# URL publique utilisée dans les liens des notifications (bouton "Silence"...)
+alertmanager_external_url: "http://{{ ansible_host | default(inventory_hostname) }}:{{ alertmanager_port }}"
+# Durée de conservation des silences et de l'historique des notifications
+alertmanager_retention: "120h"
+
+# Haute disponibilité : liste des autres instances "IP:9094".
+# Liste vide = instance unique, le mode cluster est désactivé.
+alertmanager_cluster_peers: []
+alertmanager_cluster_port: 9094
+
+# Arguments supplémentaires passés au binaire
+alertmanager_extra_args: []
+
+# ---------------------------------------------------------------------------
+# Routage des alertes
+# ---------------------------------------------------------------------------
+alertmanager_resolve_timeout: "5m"
+alertmanager_group_by: ["alertname", "instance", "severity"]
+alertmanager_group_wait: "30s"
+alertmanager_group_interval: "5m"
+alertmanager_repeat_interval: "4h"
+# Les alertes critiques sont renvoyées plus souvent
+alertmanager_critical_repeat_interval: "1h"
+
+# ---------------------------------------------------------------------------
+# Notifications : E-mail (désactivé si alertmanager_smtp_smarthost est vide)
+# ---------------------------------------------------------------------------
+alertmanager_smtp_smarthost: ""          # ex. "smtp.office365.com:587"
+alertmanager_smtp_from: ""               # ex. "alertmanager@vodacom.cd"
+alertmanager_smtp_auth_username: ""
+alertmanager_smtp_auth_password: ""      # -> ansible-vault
+alertmanager_smtp_require_tls: true
+alertmanager_email_to: ""                # destinataires des alertes "warning"
+alertmanager_critical_email_to: "{{ alertmanager_email_to }}"
+
+# ---------------------------------------------------------------------------
+# Notifications : Microsoft Teams via Workflows (Power Automate)
+# Receiver msteamsv2_configs, disponible à partir d'Alertmanager 0.28.
+# Les anciens "Incoming Webhooks" Office 365 (webhook.office.com) ne
+# fonctionnent plus : utiliser une URL Workflows.
+# (désactivé si alertmanager_msteams_webhook_url est vide)
+# ---------------------------------------------------------------------------
+alertmanager_msteams_webhook_url: ""     # -> ansible-vault
+alertmanager_critical_msteams_webhook_url: "{{ alertmanager_msteams_webhook_url }}"
+
+# ---------------------------------------------------------------------------
+# Notifications : Slack (désactivé si alertmanager_slack_webhook_url est vide)
+# ---------------------------------------------------------------------------
+alertmanager_slack_webhook_url: ""       # -> ansible-vault
+alertmanager_slack_channel: "#alerts"
+alertmanager_critical_slack_channel: "{{ alertmanager_slack_channel }}"
+
+# ---------------------------------------------------------------------------
+# Dérivées (normalement pas besoin de les surcharger)
+# ---------------------------------------------------------------------------
+alertmanager_release_name: "alertmanager-{{ alertmanager_version }}.linux-{{ alertmanager_arch }}"
+alertmanager_download_base: "https://github.com/prometheus/alertmanager/releases/download/v{{ alertmanager_version }}"
+alertmanager_archive_url: "{{ alertmanager_download_base }}/{{ alertmanager_release_name }}.tar.gz"
+alertmanager_checksum_url: "{{ alertmanager_download_base }}/sha256sums.txt"
+alertmanager_archive_path: "/tmp/{{ alertmanager_release_name }}.tar.gz"

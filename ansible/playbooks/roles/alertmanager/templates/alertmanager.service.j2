@@ -1,0 +1,44 @@
+# Fichier généré par Ansible (rôle alertmanager).
+# Ne pas éditer directement sur le serveur : modifier le template à la place.
+
+[Unit]
+Description=Prometheus Alertmanager
+Documentation=https://prometheus.io/docs/alerting/latest/alertmanager/
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User={{ alertmanager_user }}
+Group={{ alertmanager_group }}
+ExecStart={{ alertmanager_bin_dir }}/alertmanager \
+  --config.file={{ alertmanager_config_dir }}/alertmanager.yml \
+  --storage.path={{ alertmanager_data_dir }} \
+  --data.retention={{ alertmanager_retention }} \
+  --web.listen-address={{ alertmanager_listen_address }} \
+  --web.external-url={{ alertmanager_external_url }} \
+{% if alertmanager_cluster_peers | length > 0 %}
+  --cluster.listen-address=0.0.0.0:{{ alertmanager_cluster_port }} \
+{% for peer in alertmanager_cluster_peers %}
+  --cluster.peer={{ peer }} \
+{% endfor %}
+{% else %}
+  --cluster.listen-address= \
+{% endif %}
+{% for arg in alertmanager_extra_args %}
+  {{ arg }} \
+{% endfor %}
+  --log.level=info
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5s
+
+# Durcissement : seule l'écriture dans le répertoire de données est autorisée
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths={{ alertmanager_data_dir }}
+
+[Install]
+WantedBy=multi-user.target

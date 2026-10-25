@@ -14,3 +14,14 @@ prometheus_evaluation_interval: "15s"
 # À surcharger via group_vars/host_vars ou -e selon l'inventaire réel.
 node_exporter_targets:
   - "172.31.9.133:9100"
+
+# Instances Alertmanager vers lesquelles Prometheus envoie les alertes (IP:port).
+# Liste vide = pas de bloc "alerting" dans prometheus.yml.
+alertmanager_targets:
+  - "localhost:9093"
+
+# Seuils des règles d'alerte (templates/alert_rules.yml.j2), en pourcentage
+prometheus_alert_cpu_threshold: 85
+prometheus_alert_memory_threshold: 90
+prometheus_alert_disk_warning_threshold: 85
+prometheus_alert_disk_critical_threshold: 95

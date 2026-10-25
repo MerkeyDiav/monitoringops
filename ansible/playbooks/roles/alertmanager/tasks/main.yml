@@ -1,0 +1,116 @@
+---
+# Rôle alertmanager : installation idempotente, configuration validée avant
+# déploiement, rechargement à chaud et contrôle de santé final.
+# Toutes les valeurs sont dans defaults/main.yml.
+
+- name: Create Alertmanager system group
+  become: true
+  ansible.builtin.group:
+    name: "{{ alertmanager_group }}"
+    system: true
+    state: present
+
+- name: Create Alertmanager system user (no login, no home)
+  become: true
+  ansible.builtin.user:
+    name: "{{ alertmanager_user }}"
+    group: "{{ alertmanager_group }}"
+    system: true
+    shell: /usr/sbin/nologin
+    create_home: false
+    state: present
+
+# Config : lisible par le service mais pas modifiable (elle contient des secrets).
+# Données : seul répertoire dans lequel le service écrit.
+- name: Create Alertmanager directories
+  become: true
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ alertmanager_group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ alertmanager_config_dir }}", owner: root, mode: "0750" }
+    - { path: "{{ alertmanager_data_dir }}", owner: "{{ alertmanager_user }}", mode: "0750" }
+  loop_control:
+    label: "{{ item.path }}"
+
+- name: Download Alertmanager archive (checksum verified)
+  ansible.builtin.get_url:
+    url: "{{ alertmanager_archive_url }}"
+    dest: "{{ alertmanager_archive_path }}"
+    checksum: "sha256:{{ alertmanager_checksum_url }}"
+    mode: "0644"
+
+# Le chemin contient la version : changer alertmanager_version relance l'extraction.
+- name: Extract Alertmanager archive
+  become: true
+  ansible.builtin.unarchive:
+    src: "{{ alertmanager_archive_path }}"
+    dest: "{{ alertmanager_install_dir }}/"
+    remote_src: true
+    creates: "{{ alertmanager_install_dir }}/{{ alertmanager_release_name }}/alertmanager"
+
+- name: Install Alertmanager binaries
+  become: true
+  ansible.builtin.copy:
+    src: "{{ alertmanager_install_dir }}/{{ alertmanager_release_name }}/{{ item }}"
+    dest: "{{ alertmanager_bin_dir }}/{{ item }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - alertmanager
+    - amtool
+  notify: Restart alertmanager
+
+# validate : amtool vérifie le fichier AVANT de remplacer l'ancien.
+# Une configuration invalide fait échouer la tâche et la prod reste intacte.
+- name: Deploy Alertmanager configuration
+  become: true
+  ansible.builtin.template:
+    src: alertmanager.yml.j2
+    dest: "{{ alertmanager_config_dir }}/alertmanager.yml"
+    owner: root
+    group: "{{ alertmanager_group }}"
+    mode: "0640"
+    validate: "{{ alertmanager_bin_dir }}/amtool check-config %s"
+  # Masque le contenu (diff, erreurs) dès qu'un secret est configuré.
+  # Sans secret, les erreurs de validation restent lisibles pour le débogage.
+  no_log: >-
+    {{ (alertmanager_smtp_auth_password | length > 0)
+       or (alertmanager_slack_webhook_url | length > 0)
+       or (alertmanager_msteams_webhook_url | length > 0) }}
+  notify: Reload alertmanager
+
+- name: Deploy Alertmanager systemd service file
+  become: true
+  ansible.builtin.template:
+    src: alertmanager.service.j2
+    dest: /etc/systemd/system/alertmanager.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart alertmanager
+
+- name: Enable and start Alertmanager service
+  become: true
+  ansible.builtin.systemd:
+    name: alertmanager
+    state: started
+    enabled: true
+    daemon_reload: true
+
+- name: Flush handlers before health check
+  ansible.builtin.meta: flush_handlers
+
+- name: Check that Alertmanager is ready
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ alertmanager_port }}/-/ready"
+    status_code: 200
+  register: alertmanager_health
+  retries: 10
+  delay: 3
+  until: alertmanager_health.status == 200

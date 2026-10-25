@@ -1,0 +1,22 @@
+---
+# MODÈLE de fichier de secrets. Ne PAS mettre de vraies valeurs ici.
+#
+# 1. Copier ce fichier :   cp vault.yml.example vault.yml
+# 2. Renseigner les vraies valeurs dans vault.yml
+# 3. Le chiffrer :         ansible-vault encrypt vault.yml
+# 4. Lancer le playbook :  ansible-playbook playbooks/site_observability.yml --ask-vault-pass
+#
+# vault.yml chiffré peut être commité ; vault.yml en clair JAMAIS.
+
+# Ne renseigner QUE les secrets des canaux activés dans vars.yml.
+
+# Mot de passe de la boîte de service (uniquement si SMTP AUTH est autorisé)
+vault_alertmanager_smtp_auth_password: "CHANGE_ME"
+
+# URL du Workflow Teams "Send webhook alerts to a channel" (à traiter comme un mot de passe)
+vault_alertmanager_msteams_webhook_url: "https://xxxx.environment.api.powerplatform.com/powerautomate/automations/direct/workflows/XXXX"
+# Optionnel : canal Teams séparé pour les alertes critiques
+# vault_alertmanager_msteams_critical_webhook_url: "https://..."
+
+# Slack (non utilisé chez Vodacom)
+# vault_alertmanager_slack_webhook_url: "https://hooks.slack.com/services/XXX/YYY/ZZZ"
