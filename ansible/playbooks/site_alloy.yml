@@ -1,0 +1,10 @@
+
+---
+# Déploiement de Grafana Alloy sur les nœuds Kubernetes.
+# Alloy collecte les logs locaux et les transmet à Loki.
+
+- name: Install Grafana Alloy on Kubernetes nodes
+  hosts: k8s_nodes
+  become: true
+  roles:
+    - alloy
