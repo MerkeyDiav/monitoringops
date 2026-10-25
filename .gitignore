@@ -11,3 +11,6 @@ __pycache__/
 
 # ===== Rendus de test locaux =====
 _render*.yml
+
+# Secrets Ansible Vault (ne jamais commiter en clair)
+**/vault.yml
