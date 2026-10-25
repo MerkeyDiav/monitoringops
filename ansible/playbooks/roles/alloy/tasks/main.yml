@@ -1,0 +1,102 @@
+
+---
+# Rôle Alloy : installation, configuration et vérification du service.
+# Les paramètres sont définis dans defaults/main.yml.
+
+# ---------------------------------------------------------------------------
+# Prérequis
+# ---------------------------------------------------------------------------
+- name: Install prerequisites for Grafana repository
+  become: true
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+    state: present
+    update_cache: true
+
+- name: Create APT keyrings directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+# ---------------------------------------------------------------------------
+# Dépôt officiel Grafana
+# ---------------------------------------------------------------------------
+- name: Download Grafana repository signing key
+  become: true
+  ansible.builtin.get_url:
+    url: https://apt.grafana.com/gpg-full.key
+    dest: /etc/apt/keyrings/grafana.asc
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Configure official Grafana APT repository
+  become: true
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/grafana.asc] https://apt.grafana.com stable main"
+    filename: grafana
+    state: present
+    update_cache: true
+
+# ---------------------------------------------------------------------------
+# Installation d'Alloy
+# ---------------------------------------------------------------------------
+- name: Install Grafana Alloy
+  become: true
+  ansible.builtin.apt:
+    name: alloy
+    state: present
+    update_cache: true
+
+# ---------------------------------------------------------------------------
+# Configuration Alloy
+# ---------------------------------------------------------------------------
+- name: Ensure Alloy configuration directory exists
+  become: true
+  ansible.builtin.file:
+    path: "{{ alloy_config_dir }}"
+    state: directory
+    owner: root
+    group: alloy
+    mode: "0750"
+
+- name: Deploy Alloy configuration
+  become: true
+  ansible.builtin.template:
+    src: config.alloy.j2
+    dest: "{{ alloy_config_dir }}/config.alloy"
+    owner: root
+    group: alloy
+    mode: "0640"
+  notify: Restart alloy
+
+# ---------------------------------------------------------------------------
+# Démarrage et vérification
+# ---------------------------------------------------------------------------
+- name: Ensure Alloy is enabled and started
+  become: true
+  ansible.builtin.systemd:
+    name: alloy
+    enabled: true
+    state: started
+
+- name: Apply pending Alloy restart before health check
+  ansible.builtin.meta: flush_handlers
+
+- name: Check Alloy service status
+  become: true
+  ansible.builtin.command:
+    argv:
+      - systemctl
+      - is-active
+      - alloy
+  register: alloy_service_status
+  changed_when: false
+  retries: 5
+  delay: 3
+  until: alloy_service_status.stdout == "active"

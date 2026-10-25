@@ -1,5 +1,0 @@
----
-# URL de l'endpoint Loki où Promtail envoie les logs.
-# À surcharger via -e "loki_push_url=..." ou dans group_vars/host_vars
-# une fois l'adresse du serveur d'observabilité connue.
-loki_push_url: "http://18.222.7.179:3100/loki/api/v1/push"

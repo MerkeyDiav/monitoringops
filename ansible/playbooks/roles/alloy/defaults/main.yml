@@ -1,0 +1,52 @@
+
+---
+# Valeurs par défaut du rôle Alloy.
+# Surcharger dans group_vars ou host_vars si nécessaire.
+# Ne pas stocker de secrets en clair dans ce fichier.
+
+# ---------------------------------------------------------------------------
+# Installation
+# ---------------------------------------------------------------------------
+# Version à valider avant le déploiement en production.
+alloy_version: "1.12.2"
+
+alloy_user: alloy
+alloy_group: alloy
+
+alloy_arch_map:
+  x86_64: amd64
+  aarch64: arm64
+alloy_arch: "{{ alloy_arch_map[ansible_architecture] | default('amd64') }}"
+
+alloy_install_dir: /opt
+alloy_bin_dir: /usr/local/bin
+alloy_config_dir: /etc/alloy
+alloy_data_dir: /var/lib/alloy
+
+# ---------------------------------------------------------------------------
+# Réseau / service
+# ---------------------------------------------------------------------------
+alloy_http_port: 12345
+alloy_listen_address: "127.0.0.1:{{ alloy_http_port }}"
+
+# Endpoint Loki : adresse privée de obs_dashboard.
+# Loki devra être déployé et accessible avant la validation de l'envoi.
+alloy_loki_url: "http://172.31.35.92:3100/loki/api/v1/push"
+
+# ---------------------------------------------------------------------------
+# Collecte des logs
+# ---------------------------------------------------------------------------
+# Configuration initiale pour un hôte Linux.
+# La collecte des logs Kubernetes sera configurée séparément.
+alloy_log_paths:
+  - /var/log/*.log
+  - /var/log/syslog
+  - /var/log/auth.log
+
+# ---------------------------------------------------------------------------
+# Dérivées : téléchargement
+# ---------------------------------------------------------------------------
+alloy_release_name: "alloy-linux-{{ alloy_arch }}"
+alloy_download_base: "https://github.com/grafana/alloy/releases/download/v{{ alloy_version }}"
+alloy_archive_url: "{{ alloy_download_base }}/{{ alloy_release_name }}.zip"
+alloy_archive_path: "/tmp/{{ alloy_release_name }}.zip"

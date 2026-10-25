@@ -1,0 +1,51 @@
+
+//
+// Configuration Grafana Alloy générée par Ansible.
+// Ne pas modifier directement sur le serveur :
+// modifier ce template et les variables du rôle Alloy.
+//
+
+// ---------------------------------------------------------------------------
+// Journalisation Alloy
+// ---------------------------------------------------------------------------
+// Les logs du service Alloy restent gérés par systemd.
+logging {
+  level = "info"
+}
+
+// ---------------------------------------------------------------------------
+// Détection des fichiers de logs Linux
+// ---------------------------------------------------------------------------
+// Les chemins sont définis dans defaults/main.yml.
+// Les fichiers absents ne seront pas nécessairement disponibles
+// sur toutes les distributions Linux.
+local.file_match "system_logs" {
+  path_targets = [
+{% for log_path in alloy_log_paths %}
+    {
+      "__path__" = {{ log_path | to_json }},
+      "job"      = "system",
+    },
+{% endfor %}
+  ]
+}
+
+// ---------------------------------------------------------------------------
+// Lecture des fichiers de logs
+// ---------------------------------------------------------------------------
+// Alloy lit les fichiers détectés et transmet les entrées à loki.write.
+loki.source.file "system_logs" {
+  targets    = local.file_match.system_logs.targets
+  forward_to = [loki.write.default.receiver]
+}
+
+// ---------------------------------------------------------------------------
+// Destination Loki
+// ---------------------------------------------------------------------------
+// L'URL est définie dans defaults/main.yml.
+// Loki doit être accessible depuis la machine sur laquelle Alloy tourne.
+loki.write "default" {
+  endpoint {
+    url = {{ alloy_loki_url | to_json }}
+  }
+}
