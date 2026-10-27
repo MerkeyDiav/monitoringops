@@ -26,12 +26,24 @@
   become: true
   ansible.builtin.command:
     cmd: "unzip -o /tmp/{{ loki_release_name }}.zip -d /tmp"
-    creates: "/tmp/{{ loki_release_name }}/loki"
+    creates: "/tmp/{{ loki_release_name }}"
+
+- name: Find Loki binary
+  become: true
+  ansible.builtin.find:
+    paths: "/tmp/{{ loki_release_name }}"
+    patterns: "loki"
+    file_type: file
+  register: loki_binary_find
+
+- name: Display found Loki binary
+  ansible.builtin.debug:
+    var: loki_binary_find.files[0].path
 
 - name: Install Loki binary
   become: true
   ansible.builtin.copy:
-    src: "/tmp/{{ loki_release_name }}/loki"
+    src: "{{ loki_binary_find.files[0].path }}"
     dest: "{{ loki_bin_dir }}/loki"
     remote_src: true
     owner: root
