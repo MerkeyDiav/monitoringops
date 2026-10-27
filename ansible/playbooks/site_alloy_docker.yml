@@ -1,0 +1,14 @@
+---
+# Déploiement de Grafana Alloy sur serveurs Docker/Linux via le rôle Ansible.
+# Ce playbook est destiné aux serveurs qui ne sont pas des nœuds Kubernetes
+# et qui nécessitent une collecte de logs système ou de conteneurs Docker.
+# Les paramètres sont définis dans defaults/main.yml et surchargés par group_vars/host_vars.
+
+- name: Deploy Grafana Alloy on Docker/Linux servers
+  hosts: alloy_collectors
+  become: true
+  roles:
+    - role: alloy
+  tags:
+    - alloy
+    - alloy_docker

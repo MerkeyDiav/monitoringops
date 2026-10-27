@@ -1,0 +1,29 @@
+---
+# Déploiement de Loki sur Kubernetes via Helm.
+# Le fichier values est défini par la variable `loki_helm_values` (inventaire/group_vars).
+
+- name: Deploy Loki with Helm
+  hosts: k8s_nodes
+  become: false
+  tasks:
+    - name: Deploy Loki Helm chart
+      ansible.builtin.command:
+        argv:
+          - helm
+          - upgrade
+          - --install
+          - loki
+          - grafana/loki
+          - --namespace
+          - "{{ k8s_namespace }}"
+          - --create-namespace
+          - --values
+          - "{{ loki_helm_values }}"
+      register: loki_helm_result
+      changed_when: >-
+        'has been upgraded' in loki_helm_result.stdout or
+        'has been installed' in loki_helm_result.stdout
+
+    - name: Display Helm deployment result
+      ansible.builtin.debug:
+        var: loki_helm_result.stdout

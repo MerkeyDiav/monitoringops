@@ -1,0 +1,43 @@
+# Valeurs Loki pour l'environnement DEV.
+# Configuration minimale pour un usage local/test.
+
+loki:
+  auth:
+    enabled: false
+
+  storage:
+    type: filesystem
+    filesystem:
+      directory: /var/loki
+
+  chunks:
+    retention_period: 7d
+
+  schema_config:
+    configs:
+      - from: 2024-01-01
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+
+ruler:
+  storage:
+    type: filesystem
+    filesystem:
+      directory: /var/loki/rules
+
+gateway:
+  enabled: true
+  replicas: 1
+
+read:
+  replicas: 0
+
+write:
+  replicas: 0
+
+backend:
+  replicas: 0

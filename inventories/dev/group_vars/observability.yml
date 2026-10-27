@@ -1,0 +1,54 @@
+---
+# Variables communes à l'environnement DEV.
+environment: dev
+
+# --- Ports des composants de monitoring ---
+grafana_port: 3000
+loki_port: 3100
+prometheus_port: 9090
+alertmanager_port: 9093
+node_exporter_port: 9100
+
+# --- Endpoints ---
+# Loki (obs_dashboard) - utilisé par Alloy et Prometheus
+loki_endpoint: "http://172.31.35.92:3100"
+
+# --- Node Exporter targets (nœuds Kubernetes à scrapper) ---
+node_exporter_targets:
+  - "172.31.9.133:9100"
+
+# --- Alertmanager targets ---
+alertmanager_targets:
+  - "localhost:9093"
+
+# --- Versions ---
+node_exporter_version: "1.8.2"
+alertmanager_version: "0.28.1"
+prometheus_version: "2.46.0"
+
+# --- Namespace Kubernetes ---
+k8s_namespace: "observability"
+
+# --- URL Loki pour Alloy (Helm values + rôle Ansible) ---
+alloy_loki_url: "http://172.31.35.92:3100/loki/api/v1/push"
+
+# --- Cluster Kubernetes (label Loki pour le rôle Ansible) ---
+alloy_cluster_name: "k8s-lab"
+
+# --- Helm chart paths ---
+alloy_helm_values: "{{ playbook_dir }}/../../helm/alloy/values-dev.yaml"
+loki_helm_values: "{{ playbook_dir }}/../../helm/loki/values-dev.yaml"
+
+# --- Variables Loki (rôle Ansible) ---
+# Stockage filesystem temporaire (en attendant S3/WEBSDFS)
+loki_storage_path: "/tmp/loki"
+# Rétention temporaire (7 jours)
+loki_retention_period: "168h"
+# Version Loki
+loki_version: "3.4.2"
+
+# --- Notifications (désactivées en DEV) ---
+# Décommenter et remplir dans vault.yml si besoin en DEV.
+alertmanager_smtp_smarthost: ""
+alertmanager_msteams_webhook_url: ""
+alertmanager_slack_webhook_url: ""

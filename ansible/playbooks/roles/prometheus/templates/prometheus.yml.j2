@@ -38,10 +38,17 @@ scrape_configs:
 {% endfor %}
 
 {% endif %}
-  # Node Exporter déployé sur les nœuds docker_nodes
+  # Node Exporter déployé sur les nœuds Kubernetes
   - job_name: "node_exporter"
     static_configs:
       - targets:
 {% for target in node_exporter_targets %}
           - "{{ target }}"
 {% endfor %}
+
+  # Loki (pour scraper les métriques de Loki si activé)
+{% if loki_endpoint | length > 0 %}
+  - job_name: "loki"
+    static_configs:
+      - targets: ["{{ loki_endpoint | replace('http://', '') | replace(':3100', '') }}:3100"]
+{% endif %}

@@ -1,0 +1,11 @@
+---
+# Déploiement de Loki sur obs_dashboard (stockage filesystem temporaire).
+# Loki doit être installé avant Alloy et Prometheus.
+
+- name: Install Loki
+  hosts: obs_dashboard
+  become: true
+  roles:
+    - role: loki
+  tags:
+    - loki

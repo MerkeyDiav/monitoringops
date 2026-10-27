@@ -12,13 +12,12 @@ prometheus_evaluation_interval: "15s"
 
 # Cibles node_exporter à scrapper (format IP:port).
 # À surcharger via group_vars/host_vars ou -e selon l'inventaire réel.
-node_exporter_targets:
-  - "172.31.9.133:9100"
+# Exemple par défaut : vide, à définir dans l'inventaire.
+node_exporter_targets: []
 
 # Instances Alertmanager vers lesquelles Prometheus envoie les alertes (IP:port).
 # Liste vide = pas de bloc "alerting" dans prometheus.yml.
-alertmanager_targets:
-  - "localhost:9093"
+alertmanager_targets: []
 
 # Seuils des règles d'alerte (templates/alert_rules.yml.j2), en pourcentage
 prometheus_alert_cpu_threshold: 85

@@ -1,4 +1,3 @@
-
 //
 // Configuration Grafana Alloy générée par Ansible.
 // Ne pas modifier directement sur le serveur :
@@ -8,17 +7,13 @@
 // ---------------------------------------------------------------------------
 // Journalisation Alloy
 // ---------------------------------------------------------------------------
-// Les logs du service Alloy restent gérés par systemd.
 logging {
   level = "info"
 }
 
 // ---------------------------------------------------------------------------
-// Détection des fichiers de logs Linux
+// Logs système Linux
 // ---------------------------------------------------------------------------
-// Les chemins sont définis dans defaults/main.yml.
-// Les fichiers absents ne seront pas nécessairement disponibles
-// sur toutes les distributions Linux.
 local.file_match "system_logs" {
   path_targets = [
 {% for log_path in alloy_log_paths %}
@@ -30,20 +25,94 @@ local.file_match "system_logs" {
   ]
 }
 
-// ---------------------------------------------------------------------------
-// Lecture des fichiers de logs
-// ---------------------------------------------------------------------------
-// Alloy lit les fichiers détectés et transmet les entrées à loki.write.
 loki.source.file "system_logs" {
   targets    = local.file_match.system_logs.targets
   forward_to = [loki.write.default.receiver]
 }
 
 // ---------------------------------------------------------------------------
+// Logs Docker (uniquement si alloy_docker_log_enabled est true)
+// ---------------------------------------------------------------------------
+{% if alloy_docker_log_enabled %}
+local.file_match "docker_logs" {
+  path_targets = [
+    {
+      "__path__" = {{ alloy_docker_log_path | to_json }},
+      "job"      = "docker",
+    },
+  ]
+}
+
+loki.source.file "docker_logs" {
+  targets    = local.file_match.docker_logs.targets
+  forward_to = [loki.process.docker_logs.receiver]
+}
+
+// ---------------------------------------------------------------------------
+// Extraction des labels depuis le nom de fichier Docker
+// ---------------------------------------------------------------------------
+loki.process "docker_logs" {
+  stage.regex {
+    source     = "filename"
+    expression = {{ alloy_docker_log_regex | to_json }}
+  }
+
+  stage.labels {
+    values = {
+      container_id = "container_id",
+    }
+  }
+
+  forward_to = [loki.write.default.receiver]
+}
+{% endif %}
+
+// ---------------------------------------------------------------------------
+// Logs des conteneurs Kubernetes (uniquement si alloy_k8s_log_path est défini)
+// Les noms de fichiers K3s suivent le format :
+//   /var/log/pods/<namespace>_<pod>_<uid>/<container>/<numero>.log
+// ---------------------------------------------------------------------------
+{% if alloy_k8s_log_path | length > 0 %}
+local.file_match "kubernetes_pod_logs" {
+  path_targets = [
+    {
+      "__path__" = {{ alloy_k8s_log_path | to_json }},
+      "job"      = "kubernetes-pods",
+      "cluster"  = {{ alloy_cluster_name | to_json }},
+    },
+  ]
+}
+
+loki.source.file "kubernetes_pod_logs" {
+  targets    = local.file_match.kubernetes_pod_logs.targets
+  forward_to = [loki.process.kubernetes_pod_logs.receiver]
+}
+
+// ---------------------------------------------------------------------------
+// Extraction des labels depuis le nom de fichier K3s
+// Format : <namespace>_<pod>_<uid>/<container>/<numero>.log
+// ---------------------------------------------------------------------------
+loki.process "kubernetes_pod_logs" {
+  stage.regex {
+    source     = "filename"
+    expression = {{ alloy_k8s_log_regex | to_json }}
+  }
+
+  stage.labels {
+    values = {
+      pod       = "pod",
+      namespace = "namespace",
+      container = "container",
+    }
+  }
+
+  forward_to = [loki.write.default.receiver]
+}
+{% endif %}
+
+// ---------------------------------------------------------------------------
 // Destination Loki
 // ---------------------------------------------------------------------------
-// L'URL est définie dans defaults/main.yml.
-// Loki doit être accessible depuis la machine sur laquelle Alloy tourne.
 loki.write "default" {
   endpoint {
     url = {{ alloy_loki_url | to_json }}

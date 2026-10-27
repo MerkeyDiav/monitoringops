@@ -1,0 +1,16 @@
+[Unit]
+Description=Loki - Log aggregation system
+After=network.target
+
+[Service]
+Type=simple
+User={{ loki_user }}
+Group={{ loki_group }}
+ExecReload=/bin/kill -HUP $MAINPID
+ExecStart={{ loki_bin_dir }}/loki --config.file={{ loki_config_dir }}/loki-local-config.yaml
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

@@ -1,10 +1,29 @@
-
 ---
-# Déploiement de Grafana Alloy sur les nœuds Kubernetes.
-# Alloy collecte les logs locaux et les transmet à Loki.
+# Déploiement de Grafana Alloy sur Kubernetes via Helm.
+# Le fichier values est défini par la variable `alloy_helm_values` (inventaire/group_vars).
 
-- name: Install Grafana Alloy on Kubernetes nodes
+- name: Deploy Grafana Alloy with Helm
   hosts: k8s_nodes
-  become: true
-  roles:
-    - alloy
+  become: false
+  tasks:
+    - name: Deploy Alloy Helm chart
+      ansible.builtin.command:
+        argv:
+          - helm
+          - upgrade
+          - --install
+          - alloy
+          - grafana/alloy
+          - --namespace
+          - "{{ k8s_namespace }}"
+          - --create-namespace
+          - --values
+          - "{{ alloy_helm_values }}"
+      register: alloy_helm_result
+      changed_when: >-
+        'has been upgraded' in alloy_helm_result.stdout or
+        'has been installed' in alloy_helm_result.stdout
+
+    - name: Display Helm deployment result
+      ansible.builtin.debug:
+        var: alloy_helm_result.stdout

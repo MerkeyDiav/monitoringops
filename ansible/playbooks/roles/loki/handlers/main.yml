@@ -1,0 +1,14 @@
+---
+# Handlers communs au rôle Loki.
+
+- name: Reload systemd
+  become: true
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart loki
+  become: true
+  ansible.builtin.systemd:
+    name: loki
+    state: restarted
+    daemon_reload: true

@@ -1,0 +1,43 @@
+---
+# Valeurs par défaut du rôle Loki.
+# Surcharger dans group_vars/host_vars selon l'environnement.
+
+# Version épinglée. Pour une mise à niveau : changer cette valeur et relancer.
+# La variable loki_version est surchargeable dans group_vars/host_vars.
+loki_version: "3.4.2"
+
+# Architecture
+loki_arch_map:
+  x86_64: amd64
+  aarch64: arm64
+  armv7l: arm
+loki_arch: "{{ loki_arch_map[ansible_architecture] | default('amd64') }}"
+
+loki_release_name: "loki-{{ loki_version }}.linux-{{ loki_arch }}"
+loki_release_url: "https://github.com/grafana/loki/releases/download/v{{ loki_version }}/{{ loki_release_name }}.tar.gz"
+
+# Chemins
+loki_bin_dir: /usr/local/bin
+loki_config_dir: /etc/loki
+loki_data_dir: /var/lib/loki
+loki_log_dir: /var/log/loki
+
+# Utilisateur
+loki_user: loki
+loki_group: loki
+
+# Réseau
+loki_port: 3100
+loki_grpc_port: 9096
+loki_listen_address: "0.0.0.0:{{ loki_port }}"
+
+# Stockage (filesystem temporaire, à remplacer par S3/WEBSDFS plus tard)
+# Surchargeable dans group_vars/host_vars.
+loki_storage_path: /tmp/loki
+
+# Rétention (temporaire, faible en attendant S3)
+# Surchargeable dans group_vars/host_vars.
+loki_retention_period: "168h"  # 7 jours
+
+# Endpoint Alertmanager (pour les alertes Loki)
+loki_alertmanager_url: "http://localhost:9093"

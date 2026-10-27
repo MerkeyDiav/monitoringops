@@ -1,6 +1,6 @@
 ---
-# Valeurs par défaut du rôle Alloy.
-# Surcharger dans group_vars ou host_vars si nécessaire.
+# Valeurs par défaut du rôle Alloy (installation sur serveurs Linux, hors Kubernetes).
+# Surcharger dans group_vars/host_vars ou -e selon l'inventaire réel.
 # Ne pas stocker de secrets en clair dans ce fichier.
 
 # ---------------------------------------------------------------------------
@@ -18,16 +18,46 @@ alloy_data_dir: /var/lib/alloy
 alloy_http_port: 12345
 alloy_listen_address: "127.0.0.1:{{ alloy_http_port }}"
 
-# Endpoint Loki : adresse privée de obs_dashboard.
-# Loki devra être déployé et accessible avant la validation de l'envoi.
-alloy_loki_url: "http://172.31.35.92:3100/loki/api/v1/push"
+# Endpoint Loki : adresse privée du serveur Loki.
+# Doit être surchargé dans group_vars/host_vars selon l'environnement.
+alloy_loki_url: ""
 
 # ---------------------------------------------------------------------------
-# Collecte des logs
+# Collecte des logs système Linux
 # ---------------------------------------------------------------------------
-# Configuration initiale pour un hôte Linux.
-# La collecte des logs Kubernetes sera configurée séparément.
+# Chemins des fichiers de logs locaux à collecter.
 alloy_log_paths:
   - /var/log/*.log
   - /var/log/syslog
   - /var/log/auth.log
+
+# ---------------------------------------------------------------------------
+# Collecte des logs Docker
+# ---------------------------------------------------------------------------
+# Activer la collecte des logs Docker (conteneurs Docker ou Podman).
+alloy_docker_log_enabled: false
+
+# Chemin des logs Docker.
+# Docker par défaut : /var/lib/docker/containers/*/*.log
+# Podman par défaut : /var/lib/containers/storage/... (à adapter)
+alloy_docker_log_path: "/var/lib/docker/containers/*/*.log"
+
+# Pattern regex pour extraire les labels depuis le nom de fichier Docker.
+# Format : <container_id>/<container_id>.log
+alloy_docker_log_regex: ".*/(?P<container_id>[^/]+)/(?P<container_id2>[^/]+)\\.log"
+
+# ---------------------------------------------------------------------------
+# Collecte des logs Kubernetes (uniquement si Alloy est déployé sur un nœud K3s)
+# ---------------------------------------------------------------------------
+# Chemin des logs Kubernetes à collecter.
+# K3s : /var/log/pods/<namespace>_<pod>_<uid>/<container>/<numero>.log
+# Laisser vide pour désactiver la collecte Kubernetes.
+alloy_k8s_log_path: ""
+
+# Nom du cluster Kubernetes (utilisé comme label Loki).
+alloy_cluster_name: "k8s-lab"
+
+# Pattern regex pour extraire les labels depuis le nom de fichier K3s.
+# Format réel : <namespace>_<pod>_<uid>/<container>/<numero>.log
+# Capture : namespace, pod, uid, container
+alloy_k8s_log_regex: ".*/(?P<namespace>[^_]+)_(?P<pod>[^_]+)_(?P<uid>[^/]+)/(?P<container>[^-/]+)-[^/]+\\.log"
