@@ -45,7 +45,7 @@ loki_storage_path: "/tmp/loki"
 # Rétention temporaire (7 jours)
 loki_retention_period: "168h"
 # Version Loki
-loki_version: "3.4.2"
+loki_version: "3.7.9"
 
 # --- Notifications (désactivées en DEV) ---
 # Décommenter et remplir dans vault.yml si besoin en DEV.

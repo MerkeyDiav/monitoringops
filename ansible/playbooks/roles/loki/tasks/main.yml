@@ -11,6 +11,7 @@
     name:
       - curl
       - ca-certificates
+      - unzip
     state: present
     update_cache: true
 
@@ -18,15 +19,16 @@
   become: true
   ansible.builtin.get_url:
     url: "{{ loki_release_url }}"
-    dest: "/tmp/{{ loki_release_name }}.tar.gz"
+    dest: "/tmp/{{ loki_release_name }}.zip"
     mode: "0644"
 
 - name: Extract Loki archive
   become: true
   ansible.builtin.unarchive:
-    src: "/tmp/{{ loki_release_name }}.tar.gz"
+    src: "/tmp/{{ loki_release_name }}.zip"
     dest: "/tmp"
     remote_src: true
+    format: zip
     owner: root
     group: root
     mode: "0755"
@@ -34,7 +36,7 @@
 - name: Install Loki binary
   become: true
   ansible.builtin.copy:
-    src: "/tmp/loki/{{ loki_release_name }}"
+    src: "/tmp/{{ loki_release_name }}/loki"
     dest: "{{ loki_bin_dir }}/loki"
     remote_src: true
     owner: root

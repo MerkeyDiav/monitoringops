@@ -4,7 +4,7 @@
 
 # Version épinglée. Pour une mise à niveau : changer cette valeur et relancer.
 # La variable loki_version est surchargeable dans group_vars/host_vars.
-loki_version: "3.4.2"
+loki_version: "3.7.9"
 
 # Architecture
 loki_arch_map:
@@ -13,8 +13,9 @@ loki_arch_map:
   armv7l: arm
 loki_arch: "{{ loki_arch_map[ansible_architecture] | default('amd64') }}"
 
-loki_release_name: "loki-{{ loki_version }}.linux-{{ loki_arch }}"
-loki_release_url: "https://github.com/grafana/loki/releases/download/v{{ loki_version }}/{{ loki_release_name }}.tar.gz"
+# Nom du dossier interne du ZIP (contient le binaire loki)
+loki_release_name: "loki-linux-{{ loki_arch }}"
+loki_release_url: "https://github.com/grafana/loki/releases/download/v{{ loki_version }}/{{ loki_release_name }}.zip"
 
 # Chemins
 loki_bin_dir: /usr/local/bin
