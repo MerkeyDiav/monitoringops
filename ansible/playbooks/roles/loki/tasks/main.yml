@@ -22,6 +22,17 @@
     dest: "/tmp/{{ loki_release_name }}.zip"
     mode: "0644"
 
+- name: List Loki archive contents
+  become: true
+  ansible.builtin.command:
+    cmd: "unzip -l /tmp/{{ loki_release_name }}.zip"
+  register: loki_archive_list
+  changed_when: false
+
+- name: Display archive contents
+  ansible.builtin.debug:
+    var: loki_archive_list.stdout
+
 - name: Extract Loki archive
   become: true
   ansible.builtin.command:
