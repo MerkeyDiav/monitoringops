@@ -24,14 +24,9 @@
 
 - name: Extract Loki archive
   become: true
-  ansible.builtin.unarchive:
-    src: "/tmp/{{ loki_release_name }}.zip"
-    dest: "/tmp"
-    remote_src: true
-    format: zip
-    owner: root
-    group: root
-    mode: "0755"
+  ansible.builtin.command:
+    cmd: "unzip -o /tmp/{{ loki_release_name }}.zip -d /tmp"
+    creates: "/tmp/{{ loki_release_name }}/loki"
 
 - name: Install Loki binary
   become: true
