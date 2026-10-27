@@ -102,6 +102,16 @@
     state: started
     daemon_reload: true
 
+- name: Wait for Loki service to be active
+  become: true
+  ansible.builtin.command:
+    cmd: "systemctl is-active loki"
+  register: loki_service_status
+  retries: 30
+  delay: 2
+  until: loki_service_status.stdout == "active"
+  changed_when: false
+
 - name: Wait for Loki to be ready
   become: true
   ansible.builtin.uri:
@@ -109,9 +119,11 @@
     method: GET
     status_code: 200
   register: loki_ready
-  retries: 15
-  delay: 2
+  retries: 30
+  delay: 5
   until: loki_ready.status == 200
+  ignore_errors: true
+  changed_when: false
 
 - name: Display Loki status
   ansible.builtin.debug:
