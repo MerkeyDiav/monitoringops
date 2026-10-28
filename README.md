@@ -81,6 +81,13 @@ Les fichiers Helm values sont séparés par environnement :
 - `helm/alloy/values-dev.yaml` / `values-prod.yaml`
 - `helm/loki/values-dev.yaml` / `values-prod.yaml`
 
+## Documentation
+
+- **[Connexion CyberArk et déploiement en production](docs/cyberark_connection.md)** — Configuration pour l'environnement Vodacom avec CyberArk PAM.
+- **[Alertmanager](docs/alertmanager.md)** — Rôle Ansible, configuration, notifications.
+- **[Notifications Alertmanager](docs/alertmanager_notifications.md)** — Procédure de test et intégration Outlook/Teams.
+- **[Installation Ansible](docs/ansible_installation.md)** — Configuration du bastion et prérequis.
+
 ## Principes
 
 - **Un seul code, plusieurs environnements** : les playbooks et rôles sont communs.
