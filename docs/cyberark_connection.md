@@ -2,52 +2,26 @@
 
 ## 1. Contexte
 
-Dans l'environnement de production Vodacom, l'accès aux serveurs se fait via CyberArk (PAM - Privileged Access Management).
+Dans l'environnement de production Vodacom, l'accès aux serveurs se fait via **CyberArk** (PAM - Privileged Access Management).
 Contrairement à l'environnement DEV où on utilise une clé SSH directe, en PROD :
 
 - On n'utilise **pas** de clé SSH stockée localement
-- On se connecte via la commande CyberArk : `ssh username@ip-de-la-vm-a-se-connecter@ip-de-cyberark`
-- CyberArk demande alors le mot de passe de l'account
+- On se connecte via la commande CyberArk : `ssh <utilisateur>@<IP-serveur-cible>@<IP-CyberArk>`
+- CyberArk demande le mot de passe de l'account (interaction humaine requise)
 - Après authentification, on accède au serveur cible
 
-## 2. Adaptation des inventaires Ansible
+## 2. Problème : CyberArk et Ansible ne sont pas compatibles directement
 
-### Inventaire DEV (actuel)
+CyberArk exige une saisie manuelle du mot de passe à chaque connexion.
+Ansible ne peut pas gérer cette interaction (pas de prompt interactif dans les playbooks).
 
-```yaml
-# inventories/dev/hosts.yml
-all:
-  children:
-    observability_servers:
-      hosts:
-        obs_dashboard:
-          ansible_host: 172.31.35.92
-          ansible_user: ubuntu
-          ansible_ssh_private_key_file: /home/ec2-user/.ssh/ekey.pem
-```
-
-### Inventaire PROD (à configurer)
-
-```yaml
-# inventories/prod/hosts.yml
-all:
-  children:
-    observability_servers:
-      hosts:
-        obs_dashboard:
-          ansible_host: <IP_VIA_CYBERARK>
-          ansible_user: <CYBERARK_USER>
-          ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
-          ansible_ssh_timeout: 30
-          ansible_connection: ssh
-```
+**Solution :** Utiliser le proxy SSH de CyberArk en mode "connection through bastion" ou configurer un accès "Passwordless" via CyberArk (recommandé par la sécurité).
 
 ## 3. Méthode recommandée pour CyberArk
 
-### Option A : Utiliser le proxy CyberArk (recommandé)
+### Option A : Proxy SSH CyberArk (mode non-interactif) ⭐
 
-CyberArk fournit un proxy SSH qui permet d'utiliser Ansible sans modifier la chaîne de connexion.
-Configurez l'inventaire pour utiliser le proxy :
+CyberArk supporte le mode `ProxyCommand` via SSH. Si le compte est configuré pour l'accès automatique (sans saisie manuelle du mot de passe), on peut utiliser :
 
 ```yaml
 # inventories/prod/hosts.yml
@@ -58,73 +32,80 @@ all:
         obs_dashboard:
           ansible_host: <IP_SERVEUR_CIBLE>
           ansible_user: <UTILISATEUR_CIBLE>
-          ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyCommand="ssh -o StrictHostKeyChecking=no -W %h:%p <CYBERARK_USER>@<IP_CYBERARK>"'
+          ansible_ssh_common_args: >-
+            -o StrictHostKeyChecking=no
+            -o UserKnownHostsFile=/dev/null
+            -o ConnectTimeout=30
+            -o ProxyCommand="ssh -o StrictHostKeyChecking=no -W %h:%p <CYBERARK_USER>@<IP_CYBERARK>"
 ```
 
-### Option B : Utiliser les variables d'environnement Ansible
+**Prérequis :** Le compte `<CYBERARK_USER>` doit avoir un accès automatisé (clé SSH ou mot de passe stocké de manière sécurisée via CyberArk).
 
-Ansible supporte les variables d'environnement pour les connexions SSH :
+### Option B : Accès direct via CyberArk (avec interaction humaine)
 
-```bash
-export ANSIBLE_HOST_KEY_CHECKING=False
-export ANSIBLE_SSH_ARGS='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyCommand="ssh -W %h:%p <CYBERARK_USER>@<IP_CYBERARK>"'
-ansible-playbook -i inventories/prod ansible/playbooks/site_loki.yml
+Si l'automatisation n'est pas possible, le workflow est :
+
+1. **Se connecter manuellement** au serveur via CyberArk :
+   ```bash
+   ssh <utilisateur_bastion>@<ip_bastion>@<ip_cyberark>
+   ```
+2. **Depuis le bastion**, exécuter Ansible :
+   ```bash
+   cd /path/to/monitoringops
+   ansible-playbook -i inventories/prod ansible/playbooks/site_loki.yml
+   ```
+3. Les connexions SSH depuis le bastion utilisent la clé SSH ou le compte local (pas CyberArk).
+
+### Option C : Configurer un compte de service CyberArk (recommandé pour l'automatisation)
+
+Auprès de l'équipe sécurité, demander :
+- Créer un compte de **service** dans CyberArk pour Ansible
+- Configurer ce compte avec un accès **non-interactif** (clé SSH ou mot de passe automatique)
+- Fournir l'IP du bastion/serveur d'exécution Ansible
+- Ce compte sera utilisé uniquement pour les déploiements automatisés
+
+## 4. Inventaire PROD-Type (à adapter selon la politique sécurité)
+
+```yaml
+# inventories/prod/hosts.yml
+all:
+  children:
+    observability_servers:
+      hosts:
+        obs_dashboard:
+          ansible_host: <IP_SERVEUR_CIBLE>
+          ansible_user: <UTILISATEUR_CIBLE>
+          ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30'
+          ansible_ssh_timeout: 30
+          ansible_connection: ssh
 ```
 
-### Option C : Configuration via ansible.cfg
-
-```ini
-# inventories/prod/ansible.cfg (optionnel)
-[defaults]
-host_key_checking = False
-ansible_ssh_common_args = '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
-ssh_args = '-o ProxyCommand="ssh -W %h:%p <CYBERARK_USER>@<IP_CYBERARK>"'
-```
-
-## 4. Exemple de workflow complet
+## 5. Workflow de déploiement en production
 
 ### Étape 1 : Se connecter au bastion via CyberArk
-
 ```bash
 ssh <utilisateur_bastion>@<ip_bastion>@<ip_cyberark>
 ```
 
 ### Étape 2 : Activer l'environnement Ansible
-
 ```bash
 source ~/ansible-venv/bin/activate
 ```
 
 ### Étape 3 : Récupérer le code
-
 ```bash
 cd /path/to/monitoringops
 git pull origin main
 ```
 
-### Étape 4 : Lancer le déploiement
-
+### Étape 4 : Simulation (check mode)
 ```bash
-# Simulation (check mode)
 ansible-playbook -i inventories/prod ansible/playbooks/site_loki.yml --check --diff
-
-# Application
-ansible-playbook -i inventories/prod ansible/playbooks/site_loki.yml
-
-# Avec vault si nécessaire
-ansible-playbook -i inventories/prod ansible/playbooks/site_loki.yml --ask-vault-pass
 ```
 
-## 5. Variables de connexion recommandées
-
-Ajouter dans `inventories/prod/group_vars/observability.yml` :
-
-```yaml
-# --- Connexion ---
-ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30'
-ansible_ssh_timeout: 30
-ansible_become: true
-ansible_become_method: sudo
+### Étape 5 : Application
+```bash
+ansible-playbook -i inventories/prod ansible/playbooks/site_loki.yml
 ```
 
 ## 6. Sécurité
@@ -133,19 +114,9 @@ ansible_become_method: sudo
 - **Ne jamais** stocker les clés SSH privées dans le dépôt
 - Utiliser Ansible Vault pour les secrets (mot de passe, tokens)
 - Les fichiers vault.yml doivent être chiffrés avec `ansible-vault encrypt`
-- Les fichiers vault.yml en clair doivent être dans .gitignore
+- Les fichiers vault.yml en clair doivent être dans `.gitignore`
 
-## 7. Déploiement progressif
-
-Pour minimiser les risés en production :
-
-1. D'abord déployer sur un serveur de test en production
-2. Vérifier la connectivité avec `ansible -i inventories/prod obs_dashboard -m ping`
-3. Lancer le playbook en mode `--check` pour simulation
-4. Lancer le playbook en mode normal
-5. Vérifier le service sur le serveur cible
-
-## 8. Commandes de vérification
+## 7. Commandes de vérification
 
 ```bash
 # Test de connectivité
@@ -156,5 +127,4 @@ ansible -i inventories/prod obs_dashboard -b -m shell -a 'systemctl status loki 
 
 # Vérifier l'endpoint Loki
 curl http://<IP_SERVEUR>:3100/ready
-curl http://<IP_SERVEUR>:3100/loki/api/v1/label/__logs__/values
 ```
