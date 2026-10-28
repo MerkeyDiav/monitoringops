@@ -1,6 +1,7 @@
 ---
 # Déploiement de Grafana Alloy sur Kubernetes via Helm.
 # Le fichier values est défini par la variable `alloy_helm_values` (inventaire/group_vars).
+# L'URL Loki est injectée via --set pour éviter les valeurs en dur dans les fichiers values.
 
 - name: Deploy Grafana Alloy with Helm
   hosts: k8s_nodes
@@ -19,6 +20,8 @@
           - --create-namespace
           - --values
           - "{{ alloy_helm_values }}"
+          - --set
+          - "loki.write.local.endpoint.url={{ alloy_loki_url }}"
       register: alloy_helm_result
       changed_when: >-
         'has been upgraded' in alloy_helm_result.stdout or

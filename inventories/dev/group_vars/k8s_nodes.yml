@@ -1,0 +1,13 @@
+---
+# Variables pour le groupe k8s_nodes (nœuds Kubernetes).
+# Utilisées par les playbooks Helm (Alloy, Loki, Node Exporter).
+
+# --- Namespace Kubernetes ---
+k8s_namespace: "observability"
+
+# --- URL Loki pour Alloy (Helm chart) ---
+alloy_loki_url: "http://172.31.35.92:3100/loki/api/v1/push"
+
+# --- Helm chart paths ---
+alloy_helm_values: "{{ playbook_dir }}/../../helm/alloy/values-dev.yaml"
+loki_helm_values: "{{ playbook_dir }}/../../helm/loki/values-dev.yaml"
